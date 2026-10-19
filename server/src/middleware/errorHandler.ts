@@ -1,4 +1,5 @@
 import { ErrorRequestHandler } from "express";
+import { ZodError } from "zod";
 
 export class AppError extends Error {
   constructor(public status: number, message: string) {
@@ -9,6 +10,13 @@ export class AppError extends Error {
 export const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
   if (err instanceof AppError) {
     res.status(err.status).json({ error: err.message });
+    return;
+  }
+  if (err instanceof ZodError) {
+    res.status(400).json({
+      error: "Validation failed",
+      details: err.issues.map((i) => ({ field: i.path.join("."), message: i.message })),
+    });
     return;
   }
   console.error(err);
