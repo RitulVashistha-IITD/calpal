@@ -1,1 +1,31 @@
 @import "tailwindcss";
+
+@theme {
+  --font-sans: "Nunito", ui-sans-serif, system-ui, sans-serif;
+
+  --color-blush-50: #fff5f8;
+  --color-blush-100: #ffe8ef;
+  --color-blush-200: #ffd1df;
+  --color-blush-300: #ffb3c9;
+  --color-blush-400: #ff8fb0;
+  --color-blush-500: #f76b98;
+  --color-blush-600: #e04a7f;
+
+  --color-mist-50: #f7f7f9;
+  --color-mist-100: #efeff3;
+  --color-mist-200: #e2e2e9;
+  --color-mist-500: #8b8b99;
+  --color-mist-700: #4a4a58;
+  --color-mist-900: #26262e;
+
+  --animate-float: float 3s ease-in-out infinite;
+  @keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-8px); }
+  }
+}
+
+body {
+  background: var(--color-blush-50);
+  color: var(--color-mist-900);
+}
