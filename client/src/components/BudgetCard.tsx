@@ -3,7 +3,7 @@ import type { FormEvent, ReactNode } from "react";
 import { api, ApiError } from "../api/client";
 import { today } from "../api/types";
 import type { Goal, Stats } from "../api/types";
-import Mascot from "./Mascot";
+import { MyCoach, coachLine, useCoach } from "./Coach";
 import { Button, ErrorBanner, Input } from "./ui";
 
 function daysUntil(date: string) {
@@ -17,7 +17,7 @@ function Ring({ pct, over, children }: { pct: number; over: boolean; children: R
   return (
     <div className="relative grid h-44 w-44 shrink-0 place-items-center">
       <svg viewBox="0 0 160 160" className="absolute inset-0 -rotate-90" aria-hidden="true">
-        <circle cx="80" cy="80" r={r} fill="none" strokeWidth="10" className="stroke-blush-100" />
+        <circle cx="80" cy="80" r={r} fill="none" strokeWidth="10" className="stroke-white/25" />
         <circle
           cx="80"
           cy="80"
@@ -27,7 +27,7 @@ function Ring({ pct, over, children }: { pct: number; over: boolean; children: R
           strokeLinecap="round"
           strokeDasharray={c}
           strokeDashoffset={c * (1 - pct / 100)}
-          className={`${over ? "stroke-red-400" : "stroke-blush-500"} transition-all duration-700`}
+          className={`${over ? "stroke-amber-200" : "stroke-blush-100"} transition-all duration-700`}
         />
       </svg>
       {children}
@@ -95,6 +95,7 @@ function GoalForm({ initial, onSaved }: { initial: Goal | null; onSaved: () => v
 }
 
 export default function BudgetCard({ refreshKey, date }: { refreshKey: number; date: string }) {
+  const { prefs } = useCoach();
   const [goal, setGoal] = useState<Goal | null>(null);
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
@@ -116,19 +117,19 @@ export default function BudgetCard({ refreshKey, date }: { refreshKey: number; d
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [date]);
 
   useEffect(() => {
     load();
   }, [load, refreshKey]);
 
-  const card = "rounded-3xl border border-mist-200 bg-white p-6 md:p-8";
-  if (loading) return <section className={`${card} text-center text-sm font-semibold text-mist-500`}>Loading your day…</section>;
-  if (error) return <section className={card}><ErrorBanner message={error} /></section>;
+  const plain = "rounded-3xl border border-mist-200 bg-white p-6 shadow-card md:p-8";
+  if (loading) return <section className={`${plain} text-center text-sm font-semibold text-mist-500`}>Loading your day…</section>;
+  if (error) return <section className={plain}><ErrorBanner message={error} /></section>;
 
   if (!goal || editing) {
     return (
-      <section className={card}>
+      <section className={plain}>
         <h2 className="font-display text-2xl font-extrabold tracking-tight">{goal ? "Edit your goal" : "Set your daily goal"}</h2>
         <p className="mt-1 text-sm text-mist-500">Your budget drives everything on this page.</p>
         <GoalForm initial={goal} onSaved={() => { setEditing(false); load(); }} />
@@ -152,44 +153,52 @@ export default function BudgetCard({ refreshKey, date }: { refreshKey: number; d
   ];
 
   return (
-    <section className={card}>
-      <div className="flex flex-col items-center gap-6 sm:flex-row sm:gap-10">
+    <section className="relative overflow-hidden rounded-3xl bg-blush-500 p-6 text-white shadow-lift md:p-8">
+      <div aria-hidden="true" className="pointer-events-none absolute -right-10 -top-14 h-48 w-48 rounded-full bg-white/10" />
+      <div aria-hidden="true" className="pointer-events-none absolute -bottom-16 right-24 h-36 w-36 rounded-full bg-white/[0.07]" />
+
+      <div className="relative flex flex-col items-center gap-6 sm:flex-row sm:gap-10">
         <Ring pct={pct} over={over}>
-          <Mascot size={72} happy={!over} float={!over} />
+          <MyCoach cheer={!over} size={104} />
         </Ring>
 
         <div className="w-full flex-1">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <p className="text-sm font-semibold text-mist-500">{over ? "Over budget by" : date === today() ? "Left today" : "Left on this day"}</p>
-              <p className={`font-display text-6xl font-extrabold tracking-tight ${over ? "text-red-500" : "text-mist-900"}`}>
+              <p className="text-sm font-semibold text-blush-100">
+                {over ? "Over budget by" : date === today() ? "Left today" : "Left on this day"}
+              </p>
+              <p className="font-display text-6xl font-extrabold tracking-tight">
                 {Math.abs(remaining)}
-                <span className="ml-1.5 text-lg font-semibold text-mist-500">kcal</span>
+                <span className="ml-1.5 text-lg font-semibold text-blush-100">kcal</span>
               </p>
             </div>
-            <button onClick={() => setEditing(true)} className="rounded-lg px-2 py-1 text-sm font-semibold text-mist-500 hover:bg-mist-100 hover:text-mist-700">
+            <button onClick={() => setEditing(true)} className="rounded-lg px-2 py-1 text-sm font-semibold text-blush-100 hover:bg-white/10">
               Edit goal
             </button>
           </div>
 
-          <div className="mt-5 grid grid-cols-3 divide-x divide-mist-100 border-t border-mist-100 pt-4 text-center">
+          <div className="mt-5 grid grid-cols-3 divide-x divide-white/20 border-t border-white/20 pt-4 text-center">
             {numbers.map((n) => (
               <div key={n.label} className="px-2">
                 <p className="font-display text-xl font-bold">{n.value}</p>
-                <p className="text-xs font-semibold text-mist-500">{n.label}</p>
+                <p className="text-xs font-semibold text-blush-100">{n.label}</p>
               </div>
             ))}
           </div>
 
-          {days !== null && (
-            <p className="mt-5 inline-block rounded-full bg-blush-50 px-4 py-1.5 text-sm font-semibold text-blush-600">
-              {days > 0
-                ? `${days} day${days === 1 ? "" : "s"} until ${eventName}`
-                : days === 0
-                  ? `${eventName} is today`
-                  : `${eventName} was ${-days} day${days === -1 ? "" : "s"} ago`}
-            </p>
-          )}
+          <div className="mt-5 flex flex-wrap items-center gap-2">
+            {days !== null && (
+              <span className="rounded-full bg-white/15 px-4 py-1.5 text-sm font-semibold">
+                {days > 0
+                  ? `${days} day${days === 1 ? "" : "s"} until ${eventName}`
+                  : days === 0
+                    ? `${eventName} is today`
+                    : `${eventName} was ${-days} day${days === -1 ? "" : "s"} ago`}
+              </span>
+            )}
+            <span className="rounded-full bg-white/15 px-4 py-1.5 text-sm font-semibold">{coachLine(prefs.kind, over)}</span>
+          </div>
         </div>
       </div>
     </section>

@@ -2,13 +2,13 @@ import { useEffect, useRef, useState } from "react";
 import { api, ApiError } from "../api/client";
 import { today } from "../api/types";
 import type { Entry, EntryListData } from "../api/types";
-import Mascot from "./Mascot";
+import { MyCoach } from "./Coach";
 import { Button, ErrorBanner, fieldClass } from "./ui";
 
 const PILL = {
   meal: "bg-mist-100 text-mist-700",
   treat: "bg-blush-100 text-blush-600",
-  workout: "bg-emerald-50 text-emerald-600",
+  workout: "bg-sage-100 text-sage-600",
 } as const;
 const LABEL = { meal: "Meal", treat: "Treat", workout: "Workout" } as const;
 
@@ -34,11 +34,14 @@ const Trash = () => (
   </svg>
 );
 
-export default function EntryList({ refreshKey, onChanged, date }: { refreshKey: number; onChanged: () => void; date: string }) {
-  const [scope, setScope] = useState<"day" | "all">("day");
+type Props = { refreshKey: number; onChanged: () => void; date: string; mode?: "day" | "all" };
+
+export default function EntryList({ refreshKey, onChanged, date, mode = "day" }: Props) {
   const [type, setType] = useState("");
   const [q, setQ] = useState("");
   const [debouncedQ, setDebouncedQ] = useState("");
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
   const [page, setPage] = useState(1);
   const [data, setData] = useState<EntryListData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -63,15 +66,18 @@ export default function EntryList({ refreshKey, onChanged, date }: { refreshKey:
     return () => clearTimeout(t);
   }, [q]);
 
-  // A new day or a new scope always starts at page 1
-  useEffect(() => { setPage(1); }, [date, scope]);
+  // A new day or mode always starts at page 1
+  useEffect(() => { setPage(1); }, [date, mode]);
 
   useEffect(() => {
     let cancelled = false; // ignore responses from outdated requests
-    const params = new URLSearchParams({ page: String(page), limit: scope === "day" ? "50" : "8" });
-    if (scope === "day") {
+    const params = new URLSearchParams({ page: String(page), limit: mode === "day" ? "50" : "10" });
+    if (mode === "day") {
       params.set("from", date);
       params.set("to", date);
+    } else {
+      if (from) params.set("from", from);
+      if (to) params.set("to", to);
     }
     if (type) params.set("type", type);
     if (debouncedQ) params.set("q", debouncedQ);
@@ -82,7 +88,7 @@ export default function EntryList({ refreshKey, onChanged, date }: { refreshKey:
       .catch((e) => { if (!cancelled) setError(e instanceof ApiError ? e.message : "Could not load entries"); })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [page, scope, date, type, debouncedQ, refreshKey]);
+  }, [page, mode, date, from, to, type, debouncedQ, refreshKey]);
 
   // If we deleted the last item on the last page, step back one page
   useEffect(() => {
@@ -141,34 +147,21 @@ export default function EntryList({ refreshKey, onChanged, date }: { refreshKey:
     }
   };
 
-  // Running totals for the day, computed from what's on screen.
-  // Only shown when nothing is filtered out, so the numbers are the true day totals.
+  // Day totals, only when nothing is filtered out, so the numbers are the true totals
   const totals =
-    scope === "day" && !type && !debouncedQ && data && data.total === data.items.length
+    mode === "day" && !type && !debouncedQ && data && data.total === data.items.length
       ? data.items.reduce(
           (t, e) => (e.type === "workout" ? { ...t, burned: t.burned + e.calories } : { ...t, eaten: t.eaten + e.calories }),
           { eaten: 0, burned: 0 }
         )
       : null;
 
+  const heading = mode === "all" ? "All entries" : date === today() ? "Today's log" : "This day's log";
+
   return (
     <>
-      <section className="rounded-3xl border border-mist-200 bg-white p-5 md:p-6">
-        <div className="flex items-center justify-between gap-3">
-          <h2 className="font-display text-xl font-extrabold tracking-tight">{scope === "day" ? "This day" : "All days"}</h2>
-          <div className="inline-flex rounded-xl bg-mist-100 p-1 text-xs font-semibold">
-            {(["day", "all"] as const).map((s) => (
-              <button
-                key={s}
-                onClick={() => setScope(s)}
-                aria-pressed={scope === s}
-                className={`rounded-lg px-3 py-1.5 transition ${scope === s ? "bg-white text-blush-600 shadow-sm" : "text-mist-500 hover:text-mist-700"}`}
-              >
-                {s === "day" ? "This day" : "All days"}
-              </button>
-            ))}
-          </div>
-        </div>
+      <section className="rounded-3xl border border-mist-200 bg-white p-5 shadow-card md:p-6">
+        <h2 className="font-display text-xl font-extrabold tracking-tight">{heading}</h2>
 
         <div className="mt-4 grid grid-cols-2 gap-2">
           <input className={fieldClass} placeholder="Search by name" value={q} onChange={(e) => setQ(e.target.value)} />
@@ -178,6 +171,12 @@ export default function EntryList({ refreshKey, onChanged, date }: { refreshKey:
             <option value="treat">Treats</option>
             <option value="workout">Workouts</option>
           </select>
+          {mode === "all" && (
+            <>
+              <input className={fieldClass} type="date" value={from} onChange={(e) => { setFrom(e.target.value); setPage(1); }} aria-label="From date" />
+              <input className={fieldClass} type="date" value={to} onChange={(e) => { setTo(e.target.value); setPage(1); }} aria-label="To date" />
+            </>
+          )}
         </div>
 
         {error && <div className="mt-3"><ErrorBanner message={error} /></div>}
@@ -185,10 +184,10 @@ export default function EntryList({ refreshKey, onChanged, date }: { refreshKey:
         {loading && !data ? (
           <p className="py-10 text-center text-sm font-semibold text-mist-500">Loading…</p>
         ) : data && data.items.length === 0 ? (
-          <div className="flex flex-col items-center py-10 text-center">
-            <Mascot size={56} float />
+          <div className="pattern-sparkles mt-3 flex flex-col items-center rounded-2xl py-10 text-center">
+            <MyCoach size={64} />
             <p className="mt-3 text-sm font-semibold text-mist-500">
-              {scope === "day" ? "Nothing logged for this day yet." : "Nothing here yet. Log your first entry."}
+              {mode === "day" ? "Nothing logged for this day yet." : "Nothing here yet. Log your first entry."}
             </p>
           </div>
         ) : (
@@ -212,11 +211,11 @@ export default function EntryList({ refreshKey, onChanged, date }: { refreshKey:
                     <p className="truncate font-semibold">{e.name}</p>
                     <p className="mt-1 flex items-center gap-2 text-xs text-mist-500">
                       <span className={`rounded-full px-2 py-0.5 font-bold ${PILL[e.type]}`}>{LABEL[e.type]}</span>
-                      {scope === "all" && friendlyDate(e.date)}
+                      {mode === "all" && friendlyDate(e.date)}
                     </p>
                   </div>
                   <div className="flex shrink-0 items-center gap-1">
-                    <span className={`mr-1 font-display text-lg font-bold tabular-nums ${e.type === "workout" ? "text-emerald-600" : "text-mist-900"}`}>
+                    <span className={`mr-1 font-display text-lg font-bold tabular-nums ${e.type === "workout" ? "text-sage-600" : "text-mist-900"}`}>
                       {e.type === "workout" ? "−" : "+"}{e.calories}
                     </span>
                     <div className="flex sm:opacity-0 sm:transition sm:focus-within:opacity-100 sm:group-hover:opacity-100">
@@ -237,7 +236,7 @@ export default function EntryList({ refreshKey, onChanged, date }: { refreshKey:
         {totals && data && data.items.length > 0 && (
           <p className="mt-3 flex justify-between border-t border-mist-100 pt-3 text-sm font-semibold text-mist-500">
             <span>Eaten <span className="font-display text-base font-bold text-mist-900">{totals.eaten}</span> kcal</span>
-            <span>Burned <span className="font-display text-base font-bold text-emerald-600">{totals.burned}</span> kcal</span>
+            <span>Burned <span className="font-display text-base font-bold text-sage-600">{totals.burned}</span> kcal</span>
           </p>
         )}
 
@@ -251,7 +250,7 @@ export default function EntryList({ refreshKey, onChanged, date }: { refreshKey:
       </section>
 
       {undo && (
-        <div className="pointer-events-none fixed inset-x-0 bottom-6 z-50 flex justify-center px-4">
+        <div className="pointer-events-none fixed inset-x-0 bottom-20 z-50 flex justify-center px-4 md:bottom-6">
           <div role="status" className="pointer-events-auto flex animate-pop items-center gap-4 rounded-xl bg-mist-900 py-3 pl-4 pr-3 text-sm font-semibold text-white shadow-lg">
             <span className="max-w-[16rem] truncate">Deleted {undo.name}</span>
             <button onClick={restore} className="rounded-lg px-2 py-1 font-bold text-blush-300 hover:bg-white/10">Undo</button>

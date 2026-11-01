@@ -10,6 +10,7 @@ import { caloriesRouter } from "./routes/calories";
 import { requireAuth } from "./middleware/auth";
 import { errorHandler, AppError } from "./middleware/errorHandler";
 import { authLimiter, apiLimiter } from "./middleware/rateLimit";
+import { profileRouter } from "./routes/profile";
 
 export const app = express();
 
@@ -33,6 +34,7 @@ app.use("/api/stats", statsRouter);
 app.use("/api/foods", foodsRouter);
 app.use("/api/optimizer", optimizerRouter);
 app.use("/api/calories", caloriesRouter);
+app.use("/api/profile", profileRouter);
 
 // Anything that matched no route above becomes a JSON 404
 app.use((_req, _res, next) => next(new AppError(404, "Route not found")));

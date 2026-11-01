@@ -4,26 +4,31 @@
   --font-sans: "Figtree", ui-sans-serif, system-ui, sans-serif;
   --font-display: "Bricolage Grotesque", "Figtree", ui-sans-serif, sans-serif;
 
-  --color-blush-50: #fff5f8;
-  --color-blush-100: #ffe8ef;
-  --color-blush-200: #ffd1df;
-  --color-blush-300: #ffb3c9;
-  --color-blush-400: #ff8fb0;
-  --color-blush-500: #f76b98;
-  --color-blush-600: #e04a7f;
+  /* Dusty rose family */
+  --color-blush-50: #fbf0f3;
+  --color-blush-100: #f6e2e7;
+  --color-blush-200: #f0d3da;
+  --color-blush-300: #e7bcc7;
+  --color-blush-400: #d9a3b0;
+  --color-blush-500: #a9566a;
+  --color-blush-600: #94485b;
 
-  --color-mist-50: #f7f7f9;
-  --color-mist-100: #efeff3;
-  --color-mist-200: #e2e2e9;
-  --color-mist-500: #8b8b99;
-  --color-mist-700: #4a4a58;
-  --color-mist-900: #26262e;
+  /* Warm plum-greys */
+  --color-mist-50: #faf5f6;
+  --color-mist-100: #f3eaed;
+  --color-mist-200: #e8d9de;
+  --color-mist-500: #7a6570;
+  --color-mist-700: #54424b;
+  --color-mist-900: #3a2b33;
 
-  --animate-float: float 3s ease-in-out infinite;
-  @keyframes float {
-    0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-6px); }
-  }
+  /* Sage accent (workouts, success) */
+  --color-sage-100: #dde8de;
+  --color-sage-400: #8fae92;
+  --color-sage-600: #4f6f55;
+
+  /* Rose-tinted shadows */
+  --shadow-card: 0 14px 30px -18px rgb(169 86 106 / 0.5);
+  --shadow-lift: 0 18px 36px -16px rgb(169 86 106 / 0.75);
 
   --animate-pop: pop 0.2s ease-out;
   @keyframes pop {
@@ -33,13 +38,25 @@
 }
 
 body {
-  background: #fffafb;
+  background: #faf0f2;
   color: var(--color-mist-900);
 }
 
 :focus-visible {
   outline: 2px solid var(--color-blush-500);
   outline-offset: 2px;
+}
+
+/* Background patterns, used sparingly and never behind dense text */
+.pattern-dots {
+  background-image: radial-gradient(rgb(169 86 106 / 0.16) 1.3px, transparent 1.3px);
+  background-size: 18px 18px;
+}
+.pattern-waves {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='24'%3E%3Cpath d='M0 12 Q20 0 40 12 T80 12' fill='none' stroke='%23A9566A' stroke-opacity='.12' stroke-width='2'/%3E%3C/svg%3E");
+}
+.pattern-sparkles {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='72' height='72'%3E%3Cpath d='M12 6l1.6 4.4L18 12l-4.4 1.6L12 18l-1.6-4.4L6 12l4.4-1.6z' fill='%23A9566A' fill-opacity='.14'/%3E%3Ccircle cx='54' cy='50' r='2' fill='%238FAE92' fill-opacity='.4'/%3E%3C/svg%3E");
 }
 
 @media (prefers-reduced-motion: reduce) {
