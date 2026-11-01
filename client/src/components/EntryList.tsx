@@ -34,12 +34,11 @@ const Trash = () => (
   </svg>
 );
 
-export default function EntryList({ refreshKey, onChanged }: { refreshKey: number; onChanged: () => void }) {
+export default function EntryList({ refreshKey, onChanged, date }: { refreshKey: number; onChanged: () => void; date: string }) {
+  const [scope, setScope] = useState<"day" | "all">("day");
   const [type, setType] = useState("");
   const [q, setQ] = useState("");
   const [debouncedQ, setDebouncedQ] = useState("");
-  const [from, setFrom] = useState("");
-  const [to, setTo] = useState("");
   const [page, setPage] = useState(1);
   const [data, setData] = useState<EntryListData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -64,13 +63,18 @@ export default function EntryList({ refreshKey, onChanged }: { refreshKey: numbe
     return () => clearTimeout(t);
   }, [q]);
 
+  // A new day or a new scope always starts at page 1
+  useEffect(() => { setPage(1); }, [date, scope]);
+
   useEffect(() => {
     let cancelled = false; // ignore responses from outdated requests
-    const params = new URLSearchParams({ page: String(page), limit: "8" });
+    const params = new URLSearchParams({ page: String(page), limit: scope === "day" ? "50" : "8" });
+    if (scope === "day") {
+      params.set("from", date);
+      params.set("to", date);
+    }
     if (type) params.set("type", type);
     if (debouncedQ) params.set("q", debouncedQ);
-    if (from) params.set("from", from);
-    if (to) params.set("to", to);
 
     setLoading(true);
     api<EntryListData>(`/entries?${params}`)
@@ -78,7 +82,7 @@ export default function EntryList({ refreshKey, onChanged }: { refreshKey: numbe
       .catch((e) => { if (!cancelled) setError(e instanceof ApiError ? e.message : "Could not load entries"); })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [page, type, debouncedQ, from, to, refreshKey]);
+  }, [page, scope, date, type, debouncedQ, refreshKey]);
 
   // If we deleted the last item on the last page, step back one page
   useEffect(() => {
@@ -137,23 +141,43 @@ export default function EntryList({ refreshKey, onChanged }: { refreshKey: numbe
     }
   };
 
-  const filter = (setter: (v: string) => void) => (v: string) => { setter(v); setPage(1); };
+  // Running totals for the day, computed from what's on screen.
+  // Only shown when nothing is filtered out, so the numbers are the true day totals.
+  const totals =
+    scope === "day" && !type && !debouncedQ && data && data.total === data.items.length
+      ? data.items.reduce(
+          (t, e) => (e.type === "workout" ? { ...t, burned: t.burned + e.calories } : { ...t, eaten: t.eaten + e.calories }),
+          { eaten: 0, burned: 0 }
+        )
+      : null;
 
   return (
     <>
       <section className="rounded-3xl border border-mist-200 bg-white p-5 md:p-6">
-        <h2 className="font-display text-xl font-extrabold tracking-tight">History</h2>
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="font-display text-xl font-extrabold tracking-tight">{scope === "day" ? "This day" : "All days"}</h2>
+          <div className="inline-flex rounded-xl bg-mist-100 p-1 text-xs font-semibold">
+            {(["day", "all"] as const).map((s) => (
+              <button
+                key={s}
+                onClick={() => setScope(s)}
+                aria-pressed={scope === s}
+                className={`rounded-lg px-3 py-1.5 transition ${scope === s ? "bg-white text-blush-600 shadow-sm" : "text-mist-500 hover:text-mist-700"}`}
+              >
+                {s === "day" ? "This day" : "All days"}
+              </button>
+            ))}
+          </div>
+        </div>
 
         <div className="mt-4 grid grid-cols-2 gap-2">
-          <input className={`${fieldClass} col-span-2`} placeholder="Search by name" value={q} onChange={(e) => setQ(e.target.value)} />
-          <select className={`${fieldClass} col-span-2`} value={type} onChange={(e) => filter(setType)(e.target.value)} aria-label="Type">
+          <input className={fieldClass} placeholder="Search by name" value={q} onChange={(e) => setQ(e.target.value)} />
+          <select className={fieldClass} value={type} onChange={(e) => { setType(e.target.value); setPage(1); }} aria-label="Type">
             <option value="">All types</option>
             <option value="meal">Meals</option>
             <option value="treat">Treats</option>
             <option value="workout">Workouts</option>
           </select>
-          <input className={fieldClass} type="date" value={from} onChange={(e) => filter(setFrom)(e.target.value)} aria-label="From date" />
-          <input className={fieldClass} type="date" value={to} onChange={(e) => filter(setTo)(e.target.value)} aria-label="To date" />
         </div>
 
         {error && <div className="mt-3"><ErrorBanner message={error} /></div>}
@@ -163,7 +187,9 @@ export default function EntryList({ refreshKey, onChanged }: { refreshKey: numbe
         ) : data && data.items.length === 0 ? (
           <div className="flex flex-col items-center py-10 text-center">
             <Mascot size={56} float />
-            <p className="mt-3 text-sm font-semibold text-mist-500">Nothing here yet. Log your first entry.</p>
+            <p className="mt-3 text-sm font-semibold text-mist-500">
+              {scope === "day" ? "Nothing logged for this day yet." : "Nothing here yet. Log your first entry."}
+            </p>
           </div>
         ) : (
           <ul className={`mt-3 max-h-[60vh] divide-y divide-mist-100 overflow-y-auto ${loading ? "opacity-60" : ""}`}>
@@ -186,7 +212,7 @@ export default function EntryList({ refreshKey, onChanged }: { refreshKey: numbe
                     <p className="truncate font-semibold">{e.name}</p>
                     <p className="mt-1 flex items-center gap-2 text-xs text-mist-500">
                       <span className={`rounded-full px-2 py-0.5 font-bold ${PILL[e.type]}`}>{LABEL[e.type]}</span>
-                      {friendlyDate(e.date)}
+                      {scope === "all" && friendlyDate(e.date)}
                     </p>
                   </div>
                   <div className="flex shrink-0 items-center gap-1">
@@ -206,6 +232,13 @@ export default function EntryList({ refreshKey, onChanged }: { refreshKey: numbe
               )
             )}
           </ul>
+        )}
+
+        {totals && data && data.items.length > 0 && (
+          <p className="mt-3 flex justify-between border-t border-mist-100 pt-3 text-sm font-semibold text-mist-500">
+            <span>Eaten <span className="font-display text-base font-bold text-mist-900">{totals.eaten}</span> kcal</span>
+            <span>Burned <span className="font-display text-base font-bold text-emerald-600">{totals.burned}</span> kcal</span>
+          </p>
         )}
 
         {data && data.pages > 1 && (

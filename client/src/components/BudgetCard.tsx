@@ -94,7 +94,7 @@ function GoalForm({ initial, onSaved }: { initial: Goal | null; onSaved: () => v
   );
 }
 
-export default function BudgetCard({ refreshKey }: { refreshKey: number }) {
+export default function BudgetCard({ refreshKey, date }: { refreshKey: number; date: string }) {
   const [goal, setGoal] = useState<Goal | null>(null);
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
@@ -104,7 +104,7 @@ export default function BudgetCard({ refreshKey }: { refreshKey: number }) {
   const load = useCallback(async () => {
     try {
       setError("");
-      setStats(await api<Stats>(`/stats/daily?date=${today()}`));
+      setStats(await api<Stats>(`/stats/daily?date=${date}`));
       try {
         setGoal(await api<Goal>("/goal"));
       } catch (e) {
@@ -161,7 +161,7 @@ export default function BudgetCard({ refreshKey }: { refreshKey: number }) {
         <div className="w-full flex-1">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <p className="text-sm font-semibold text-mist-500">{over ? "Over today's budget by" : "Left today"}</p>
+              <p className="text-sm font-semibold text-mist-500">{over ? "Over budget by" : date === today() ? "Left today" : "Left on this day"}</p>
               <p className={`font-display text-6xl font-extrabold tracking-tight ${over ? "text-red-500" : "text-mist-900"}`}>
                 {Math.abs(remaining)}
                 <span className="ml-1.5 text-lg font-semibold text-mist-500">kcal</span>

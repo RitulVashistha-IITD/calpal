@@ -13,11 +13,12 @@ const TYPES: { value: EntryType; label: string }[] = [
 
 type Estimate = { calories: number; serving: string };
 
-export default function EntryForm({ onCreated }: { onCreated: () => void }) {
+export default function EntryForm({ onCreated, day }: { onCreated: () => void; day: string }) {
   const [type, setType] = useState<EntryType>("meal");
   const [name, setName] = useState("");
   const [calories, setCalories] = useState("");
-  const [date, setDate] = useState(today());
+  const [date, setDate] = useState(day);
+  useEffect(() => { setDate(day); }, [day]); // follow the day switcher
   const [errors, setErrors] = useState<{ name?: string; calories?: string }>({});
   const [formError, setFormError] = useState("");
   const [loading, setLoading] = useState(false);

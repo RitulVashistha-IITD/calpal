@@ -1,18 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { api, ApiError } from "../api/client";
-import { today } from "../api/types";
 import type { Food, OptimizeResult, Stats } from "../api/types";
 import { Button, ErrorBanner, Input, fieldClass } from "./ui";
 
 const msg = (e: unknown, fallback: string) =>
   e instanceof ApiError ? e.message : fallback;
 
-export default function CravingOptimizer({
-  onLogged,
-}: {
-  onLogged: () => void;
-}) {
+export default function CravingOptimizer({ onLogged, day }: { onLogged: () => void; day: string }) {
   const [foods, setFoods] = useState<Food[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [showStarters, setShowStarters] = useState(false);
@@ -85,7 +80,7 @@ export default function CravingOptimizer({
 
   const useRemaining = async () => {
     try {
-      const s = await api<Stats>(`/stats/daily?date=${today()}`);
+      const s = await api<Stats>(`/stats/daily?date=${day}`);
       if (s.remaining === null)
         return setError("Set a goal first so I know your budget");
       setError("");
@@ -131,7 +126,7 @@ export default function CravingOptimizer({
             type: "treat",
             name: p.count > 1 ? `${p.name} ×${p.count}` : p.name,
             calories: p.calories * p.count,
-            date: today(),
+            date: day,
           },
         });
       }
