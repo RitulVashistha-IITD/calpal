@@ -1,13 +1,38 @@
 import { useCallback, useEffect, useState } from "react";
-import type { FormEvent } from "react";
+import type { FormEvent, ReactNode } from "react";
 import { api, ApiError } from "../api/client";
 import { today } from "../api/types";
 import type { Goal, Stats } from "../api/types";
+import Mascot from "./Mascot";
 import { Button, ErrorBanner, Input } from "./ui";
 
 function daysUntil(date: string) {
   const ms = new Date(date + "T00:00:00").getTime() - new Date(today() + "T00:00:00").getTime();
   return Math.round(ms / 86400000);
+}
+
+function Ring({ pct, over, children }: { pct: number; over: boolean; children: ReactNode }) {
+  const r = 70;
+  const c = 2 * Math.PI * r;
+  return (
+    <div className="relative grid h-44 w-44 shrink-0 place-items-center">
+      <svg viewBox="0 0 160 160" className="absolute inset-0 -rotate-90" aria-hidden="true">
+        <circle cx="80" cy="80" r={r} fill="none" strokeWidth="10" className="stroke-blush-100" />
+        <circle
+          cx="80"
+          cy="80"
+          r={r}
+          fill="none"
+          strokeWidth="10"
+          strokeLinecap="round"
+          strokeDasharray={c}
+          strokeDashoffset={c * (1 - pct / 100)}
+          className={`${over ? "stroke-red-400" : "stroke-blush-500"} transition-all duration-700`}
+        />
+      </svg>
+      {children}
+    </div>
+  );
 }
 
 function GoalForm({ initial, onSaved }: { initial: Goal | null; onSaved: () => void }) {
@@ -43,16 +68,16 @@ function GoalForm({ initial, onSaved }: { initial: Goal | null; onSaved: () => v
   };
 
   return (
-    <form onSubmit={submit} className="space-y-3">
+    <form onSubmit={submit} className="mt-5 max-w-lg space-y-4">
       {error && <ErrorBanner message={error} />}
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-3 gap-1 rounded-xl bg-mist-100 p-1">
         {(["lose", "maintain", "gain"] as const).map((t) => (
           <button
             type="button"
             key={t}
             onClick={() => setType(t)}
-            className={`rounded-2xl py-2 text-sm font-extrabold capitalize ${
-              type === t ? "bg-blush-500 text-white" : "bg-mist-100 text-mist-700"
+            className={`rounded-lg py-2 text-sm font-semibold capitalize transition ${
+              type === t ? "bg-white text-blush-600 shadow-sm" : "text-mist-500 hover:text-mist-700"
             }`}
           >
             {t}
@@ -64,7 +89,7 @@ function GoalForm({ initial, onSaved }: { initial: Goal | null; onSaved: () => v
         <Input label="Event name (optional)" value={label} onChange={(e) => setLabel(e.target.value)} placeholder="Goa trip" />
         <Input label="Event date (optional)" type="date" value={targetDate} onChange={(e) => setTargetDate(e.target.value)} />
       </div>
-      <Button type="submit" loading={loading} className="w-full">Save goal</Button>
+      <Button type="submit" loading={loading}>Save goal</Button>
     </form>
   );
 }
@@ -97,17 +122,17 @@ export default function BudgetCard({ refreshKey }: { refreshKey: number }) {
     load();
   }, [load, refreshKey]);
 
-  const card = "rounded-3xl bg-white p-6 shadow-lg shadow-blush-200/50";
-  if (loading) return <div className={`${card} text-center font-semibold text-mist-500`}>Loading your day…</div>;
-  if (error) return <div className={card}><ErrorBanner message={error} /></div>;
+  const card = "rounded-3xl border border-mist-200 bg-white p-6 md:p-8";
+  if (loading) return <section className={`${card} text-center text-sm font-semibold text-mist-500`}>Loading your day…</section>;
+  if (error) return <section className={card}><ErrorBanner message={error} /></section>;
 
   if (!goal || editing) {
     return (
-      <div className={card}>
-        <h2 className="mb-1 text-xl font-extrabold text-blush-600">{goal ? "Edit your goal" : "Set your goal 🎯"}</h2>
-        <p className="mb-4 text-sm font-semibold text-mist-500">This sets your daily budget.</p>
+      <section className={card}>
+        <h2 className="font-display text-2xl font-extrabold tracking-tight">{goal ? "Edit your goal" : "Set your daily goal"}</h2>
+        <p className="mt-1 text-sm text-mist-500">Your budget drives everything on this page.</p>
         <GoalForm initial={goal} onSaved={() => { setEditing(false); load(); }} />
-      </div>
+      </section>
     );
   }
 
@@ -115,38 +140,58 @@ export default function BudgetCard({ refreshKey }: { refreshKey: number }) {
   const burned = stats?.burned ?? 0;
   const remaining = stats?.remaining ?? goal.dailyCalorieBudget;
   const allowance = goal.dailyCalorieBudget + burned;
-  const pct = Math.min(100, Math.round((eaten / allowance) * 100));
+  const over = remaining < 0;
+  const pct = over ? 100 : Math.min(100, Math.round((eaten / allowance) * 100));
   const days = goal.targetDate ? daysUntil(goal.targetDate) : null;
+  const eventName = goal.eventLabel || "your event";
+
+  const numbers = [
+    { label: "Budget", value: goal.dailyCalorieBudget },
+    { label: "Eaten", value: eaten },
+    { label: "Burned", value: burned },
+  ];
 
   return (
-    <div className={card}>
-      <div className="flex items-start justify-between">
-        <div>
-          <p className="text-sm font-bold text-mist-500">Left today</p>
-          <p className={`text-5xl font-extrabold ${remaining < 0 ? "text-red-500" : "text-blush-600"}`}>
-            {remaining} <span className="text-lg text-mist-500">kcal</span>
-          </p>
+    <section className={card}>
+      <div className="flex flex-col items-center gap-6 sm:flex-row sm:gap-10">
+        <Ring pct={pct} over={over}>
+          <Mascot size={72} happy={!over} float={!over} />
+        </Ring>
+
+        <div className="w-full flex-1">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="text-sm font-semibold text-mist-500">{over ? "Over today's budget by" : "Left today"}</p>
+              <p className={`font-display text-6xl font-extrabold tracking-tight ${over ? "text-red-500" : "text-mist-900"}`}>
+                {Math.abs(remaining)}
+                <span className="ml-1.5 text-lg font-semibold text-mist-500">kcal</span>
+              </p>
+            </div>
+            <button onClick={() => setEditing(true)} className="rounded-lg px-2 py-1 text-sm font-semibold text-mist-500 hover:bg-mist-100 hover:text-mist-700">
+              Edit goal
+            </button>
+          </div>
+
+          <div className="mt-5 grid grid-cols-3 divide-x divide-mist-100 border-t border-mist-100 pt-4 text-center">
+            {numbers.map((n) => (
+              <div key={n.label} className="px-2">
+                <p className="font-display text-xl font-bold">{n.value}</p>
+                <p className="text-xs font-semibold text-mist-500">{n.label}</p>
+              </div>
+            ))}
+          </div>
+
+          {days !== null && (
+            <p className="mt-5 inline-block rounded-full bg-blush-50 px-4 py-1.5 text-sm font-semibold text-blush-600">
+              {days > 0
+                ? `${days} day${days === 1 ? "" : "s"} until ${eventName}`
+                : days === 0
+                  ? `${eventName} is today`
+                  : `${eventName} was ${-days} day${days === -1 ? "" : "s"} ago`}
+            </p>
+          )}
         </div>
-        <button onClick={() => setEditing(true)} className="text-sm font-bold text-mist-500 hover:text-blush-600">Edit goal</button>
       </div>
-
-      <div className="mt-4 h-3 overflow-hidden rounded-full bg-blush-100">
-        <div className="h-full rounded-full bg-blush-400 transition-all" style={{ width: `${pct}%` }} />
-      </div>
-
-      <div className="mt-4 grid grid-cols-3 gap-3 text-center">
-        <div className="rounded-2xl bg-mist-50 p-3"><p className="text-xs font-bold text-mist-500">Budget</p><p className="font-extrabold">{goal.dailyCalorieBudget}</p></div>
-        <div className="rounded-2xl bg-mist-50 p-3"><p className="text-xs font-bold text-mist-500">Eaten</p><p className="font-extrabold">{eaten}</p></div>
-        <div className="rounded-2xl bg-mist-50 p-3"><p className="text-xs font-bold text-mist-500">Burned</p><p className="font-extrabold">{burned}</p></div>
-      </div>
-
-      {days !== null && (
-        <p className="mt-4 rounded-2xl bg-blush-50 p-3 text-center text-sm font-extrabold text-blush-600">
-          {days > 0 ? `${days} day${days === 1 ? "" : "s"} until ${goal.eventLabel || "your event"} ✨`
-            : days === 0 ? `${goal.eventLabel || "Your event"} is today! 🎉`
-            : `${goal.eventLabel || "Your event"} was ${-days} day${days === -1 ? "" : "s"} ago`}
-        </p>
-      )}
-    </div>
+    </section>
   );
 }

@@ -1,7 +1,8 @@
 @import "tailwindcss";
 
 @theme {
-  --font-sans: "Nunito", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Figtree", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Bricolage Grotesque", "Figtree", ui-sans-serif, sans-serif;
 
   --color-blush-50: #fff5f8;
   --color-blush-100: #ffe8ef;
@@ -21,11 +22,29 @@
   --animate-float: float 3s ease-in-out infinite;
   @keyframes float {
     0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-8px); }
+    50% { transform: translateY(-6px); }
+  }
+
+  --animate-pop: pop 0.2s ease-out;
+  @keyframes pop {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
   }
 }
 
 body {
-  background: var(--color-blush-50);
+  background: #fffafb;
   color: var(--color-mist-900);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-blush-500);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation: none !important;
+    transition: none !important;
+  }
 }

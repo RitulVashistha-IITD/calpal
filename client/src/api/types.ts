@@ -6,3 +6,6 @@ export type EntryListData = { items: Entry[]; total: number; page: number; limit
 
 // Local date as YYYY-MM-DD (the server stores dates as plain strings, so there are no timezone surprises)
 export const today = () => new Date().toLocaleDateString("en-CA");
+export type Food = { _id: string; userId: string | null; name: string; calories: number; joy: number };
+export type Pick = { id: string; name: string; count: number; calories: number; joy: number };
+export type OptimizeResult = { budget: number; picks: Pick[]; totalCalories: number; totalJoy: number };
