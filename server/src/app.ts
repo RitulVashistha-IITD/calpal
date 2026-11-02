@@ -12,8 +12,11 @@ import { errorHandler, AppError } from "./middleware/errorHandler";
 import { authLimiter, apiLimiter } from "./middleware/rateLimit";
 import { profileRouter } from "./routes/profile";
 import { accountRouter } from "./routes/account";
+import path from "node:path";
+import fs from "node:fs";
 
 export const app = express();
+app.set("trust proxy", 1); // behind Render's proxy: without this, every visitor looks like one IP to the rate limiter
 
 app.use(helmet());
 app.use(cors({ origin: "http://localhost:5173" }));
@@ -38,7 +41,29 @@ app.use("/api/optimizer", optimizerRouter);
 app.use("/api/calories", caloriesRouter);
 app.use("/api/profile", profileRouter);
 
-// Anything that matched no route above becomes a JSON 404
+// Unknown API paths get a JSON 404
+app.use("/api", (_req, _res, next) => next(new AppError(404, "Route not found")));
+
+// In production the same server also serves the built React app (client/dist)
+const clientDist = path.resolve(__dirname, "../../client/dist");
+if (fs.existsSync(clientDist)) {
+  app.use(
+    express.static(clientDist, {
+      index: false,
+      setHeaders(res, filePath) {
+        // Hashed files in /assets never change. Everything else (index.html, sw.js, manifest) must revalidate.
+        const hashed = filePath.includes(`${path.sep}assets${path.sep}`);
+        res.setHeader("Cache-Control", hashed ? "public, max-age=31536000, immutable" : "no-cache");
+      },
+    })
+  );
+  // Any other page URL (/plan, /history, ...) gets the app, and React Router takes over
+  app.use((req, res, next) => {
+    if (req.method !== "GET" && req.method !== "HEAD") return next();
+    res.sendFile(path.join(clientDist, "index.html"));
+  });
+}
+
 app.use((_req, _res, next) => next(new AppError(404, "Route not found")));
 
 app.use(errorHandler); // always last

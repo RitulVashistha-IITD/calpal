@@ -1,6 +1,6 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import { User } from "../models/User.ts";
+import { User } from "../models/User";
 import { env } from "../config/env";
 import { AppError } from "../middleware/errorHandler";
 import { RegisterInput, LoginInput } from "../schemas/auth";
