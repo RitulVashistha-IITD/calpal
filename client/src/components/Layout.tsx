@@ -43,7 +43,7 @@ export default function Layout() {
         <Outlet />
       </div>
 
-      <nav className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 gap-1 border-t border-mist-200 bg-white px-2 py-2 md:hidden" aria-label="Main (mobile)">
+      <nav className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 gap-1 border-t border-mist-200 bg-white px-2 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] md:hidden" aria-label="Main (mobile)">
         {LINKS.map((l) => (
           <NavLink
             key={l.to}

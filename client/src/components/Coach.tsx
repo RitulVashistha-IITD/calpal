@@ -6,8 +6,8 @@ export type CoachKind = "w" | "m" | "n";
 export type CoachPrefs = { kind: CoachKind; tone: number };
 
 export const COACHES: { kind: CoachKind; name: string; pronoun: string }[] = [
-  { kind: "w", name: "Coach Irene", pronoun: "She" },
-  { kind: "m", name: "Coach Samay", pronoun: "He" },
+  { kind: "w", name: "Coach Ritul", pronoun: "She" },
+  { kind: "m", name: "Coach Jim", pronoun: "He" },
   { kind: "n", name: "Coach Jamey", pronoun: "They" },
 ];
 
