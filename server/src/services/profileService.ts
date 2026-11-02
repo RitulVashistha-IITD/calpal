@@ -2,6 +2,7 @@ import { Entry } from "../models/Entry";
 import { Goal } from "../models/Goal";
 import { Profile } from "../models/Profile";
 import { ProfileInput } from "../schemas/profile";
+import { AppError } from "../middleware/errorHandler";
 
 const KCAL_PER_KG = 7700;
 // Lifestyle factors that EXCLUDE the workouts the user logs (those are added separately)
@@ -127,31 +128,50 @@ function recommend(
       projectedKg:
         daysLeft === null ? null : round1(simulate(kg, b, budget, 0, daysLeft)),
       daysToTarget: null as number | null,
+      basis: "maintain" as "maintain" | "date" | "default",
+      neededWeeklyKg: null as number | null,
+      safeWeeklyKg: null as number | null,
+      requiredBudget: null as number | null,
+      limited: false,
+      missing: [] as string[],
       notes,
     };
   }
 
   const maxWeekly = direction === "lose" ? Math.min(1, kg * 0.01) : 0.5;
+  const floor =
+    direction === "lose" ? Math.max(MIN_INTAKE[b.sex], bmr(kg, b)) : 0;
   let weekly = direction === "lose" ? 0.5 : 0.25;
+  let basis: "maintain" | "date" | "default" = "default";
+  let neededWeeklyKg: number | null = null;
+  let requiredBudget: number | null = null;
+  let limited = false;
+
   if (targetKg !== null && daysLeft !== null && daysLeft > 0) {
+    basis = "date";
     const needed = (Math.abs(targetKg - kg) / daysLeft) * 7;
+    neededWeeklyKg = round1(needed);
     weekly = Math.min(needed, maxWeekly);
-    if (needed > maxWeekly) {
-      notes.push(
-        `Reaching ${targetKg} kg by your date needs about ${round1(needed)} kg a week, faster than the safe limit of about ${round1(maxWeekly)} kg. This budget keeps to the safe pace instead.`,
-      );
-    }
+    // What the date would really need, shown honestly even when it is not a safe pace
+    const dailyNeeded = (needed * KCAL_PER_KG) / 7;
+    const rawIntake = direction === "lose" ? maint - dailyNeeded : maint + dailyNeeded;
+    requiredBudget = Math.round(rawIntake / 10) * 10;
+    limited = needed > maxWeekly || (direction === "lose" && rawIntake < floor);
+  }
+
+  const missing: string[] = [];
+  if (basis === "default") {
+    if (targetKg === null) missing.push("a target weight");
+    if (daysLeft === null || daysLeft <= 0) missing.push("a future date");
   }
 
   const daily = (weekly * KCAL_PER_KG) / 7;
   let intake = direction === "lose" ? maint - daily : maint + daily;
-  const floor =
-    direction === "lose" ? Math.max(MIN_INTAKE[b.sex], bmr(kg, b)) : 0;
   if (direction === "lose" && intake < floor) {
     intake = floor;
-    notes.push(
-      "I kept this at a safe minimum for your body, so the pace is slower than the target would need.",
-    );
+    if (!limited) {
+      notes.push("I kept this at a safe minimum for your body, so the pace is slower than the target would need.");
+    }
   }
   const budget = Math.max(
     Math.round(intake / 10) * 10,
@@ -167,6 +187,12 @@ function recommend(
       daysLeft === null ? null : round1(simulate(kg, b, budget, 0, daysLeft)),
     daysToTarget:
       targetKg === null ? null : daysToReach(kg, targetKg, b, budget, 0),
+    basis,
+    neededWeeklyKg,
+    safeWeeklyKg: round1(maxWeekly),
+    requiredBudget,
+    limited,
+    missing,
     notes,
   };
 }
@@ -178,18 +204,9 @@ export async function saveProfile(userId: string, input: ProfileInput) {
     existing && existing.weightKg === input.weightKg
       ? existing.weightDate
       : input.weightDate;
-  const { targetWeightKg, ...rest } = input;
   return Profile.findOneAndUpdate(
     { userId },
-    {
-      $set: {
-        ...rest,
-        weightDate,
-        userId,
-        ...(targetWeightKg !== undefined && { targetWeightKg }),
-      },
-      ...(targetWeightKg === undefined && { $unset: { targetWeightKg: 1 } }),
-    },
+    { $set: { ...input, weightDate, userId } },
     { new: true, upsert: true, runValidators: true },
   );
 }
@@ -217,7 +234,7 @@ export async function forecast(userId: string, today: string) {
     activity: profile.activity as Body["activity"],
   };
   const kg = profile.weightKg;
-  const targetKg = profile.targetWeightKg ?? null;
+  const targetKg = goal?.targetWeightKg ?? profile.targetWeightKg ?? null;
 
   // The last 7 COMPLETED days (today is unfinished, so it's left out)
   const entries = await Entry.find({
@@ -287,4 +304,40 @@ export async function forecast(userId: string, today: string) {
   }
 
   return { ...base, ready: true, recent, onBudget };
+}
+
+// Live suggestion for the goal form: uses what the user is typing, before it's saved
+export async function suggest(
+  userId: string,
+  today: string,
+  q: { type?: "lose" | "maintain" | "gain"; targetWeightKg?: number; targetDate?: string },
+) {
+  const profile = await Profile.findOne({ userId });
+  if (!profile) return { hasProfile: false as const };
+  const body: Body = {
+    heightCm: profile.heightCm,
+    age: profile.age,
+    sex: profile.sex as Body["sex"],
+    activity: profile.activity as Body["activity"],
+  };
+  const daysLeft = q.targetDate ? Math.max(0, diffDays(today, q.targetDate)) : null;
+  return {
+    hasProfile: true as const,
+    currentKg: profile.weightKg,
+    heightCm: profile.heightCm,
+    daysLeft,
+    recommendation: recommend(profile.weightKg, body, q.targetWeightKg ?? null, daysLeft, q.type ?? null),
+  };
+}
+
+export const getProfile = (userId: string) => Profile.findOne({ userId });
+
+export async function updateWeight(userId: string, weightKg: number, weightDate: string) {
+  const p = await Profile.findOneAndUpdate(
+    { userId },
+    { $set: { weightKg, weightDate } },
+    { new: true, runValidators: true }
+  );
+  if (!p) throw new AppError(404, "Add your body stats first");
+  return p;
 }

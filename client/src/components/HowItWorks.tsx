@@ -8,12 +8,12 @@ const SECTIONS: { title: string; body: string[] }[] = [
     ],
   },
   {
-    title: "Why not just eat nothing until the trip?",
+    title: "Why not just eat nothing until the big day?",
     body: [
-      "Because you'd show up tired, grumpy and with less muscle. Iconic, but no.",
-      "Most guidance lands on 0.5 to 1 kg a week as the sweet spot. Go much faster and you're more likely to lose muscle, miss nutrients, or get gallstones. Not the souvenir we're after.",
+      "Because you'd get there tired, grumpy and with less muscle. Iconic, but no.",
+      "Most guidance lands on 0.5 to 1 kg a week as the sweet spot. Go much faster and you're more likely to lose muscle, miss nutrients, or get gallstones. Not the glow-up we're after.",
       "I also cap the pace at 1% of your body weight a week, so smaller bodies get a gentler ceiling. That 1% is my own rule, not an official one.",
-      "If your date needs a faster pace than that, the app says so honestly and gives you the safe-pace budget instead. Think of it as a very supportive friend who refuses to lie to you.",
+      "If your date needs a faster pace than that, the app shows you the safe plan and also tells you the number the math asks for, so you can see the gap. Think of it as a very supportive friend who refuses to lie to you.",
     ],
   },
   {

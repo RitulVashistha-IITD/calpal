@@ -1,6 +1,6 @@
 export type EntryType = "meal" | "treat" | "workout";
 export type Entry = { _id: string; type: EntryType; name: string; calories: number; date: string; notes?: string };
-export type Goal = { type: "lose" | "maintain" | "gain"; dailyCalorieBudget: number; targetDate?: string; eventLabel?: string };
+export type Goal = { type: "lose" | "maintain" | "gain"; dailyCalorieBudget: number; targetWeightKg?: number; targetDate?: string; eventLabel?: string };
 export type Stats = { date: string; budget: number | null; eaten: number; burned: number; remaining: number | null };
 export type EntryListData = { items: Entry[]; total: number; page: number; limit: number; pages: number };
 
@@ -51,4 +51,17 @@ export type Recommendation = {
   projectedKg: number | null;
   daysToTarget: number | null;
   notes: string[];
+  basis: "maintain" | "date" | "default";
+  neededWeeklyKg: number | null;
+  missing: string[];
+  safeWeeklyKg: number | null;
+  requiredBudget: number | null;
+  limited: boolean;
+};
+export type Suggest = {
+  hasProfile: boolean;
+  currentKg?: number;
+  daysLeft?: number | null;
+  recommendation?: Recommendation;
+  heightCm?: number;
 };

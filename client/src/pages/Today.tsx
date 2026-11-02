@@ -5,6 +5,8 @@ import BudgetCard from "../components/BudgetCard";
 import EntryForm from "../components/EntryForm";
 import EntryList from "../components/EntryList";
 import CravingOptimizer from "../components/CravingOptimizer";
+import { WeighInNudge } from "../components/WeighIn";
+import EventPep from "../components/EventPep";
 
 const TABS = [
   { id: "log", label: "Log" },
@@ -54,8 +56,9 @@ export default function TodayPage() {
           {!isToday && <Button variant="soft" onClick={() => setDate(today())} className="!py-2">Back to today</Button>}
         </div>
       </div>
-
+      <WeighInNudge refreshKey={refreshKey} />
       <BudgetCard refreshKey={refreshKey} date={date} />
+      <EventPep refreshKey={refreshKey} />
 
       <div className="grid items-start gap-6 lg:grid-cols-5">
         <section className="rounded-3xl border border-mist-200 bg-white p-5 shadow-card md:p-6 lg:col-span-3">

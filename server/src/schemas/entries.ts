@@ -23,6 +23,7 @@ export const listQuerySchema = z.object({
 export const goalSchema = z.object({
   type: z.enum(["lose", "maintain", "gain"]),
   dailyCalorieBudget: z.number().int().min(800).max(10000),
+  targetWeightKg: z.number().min(30).max(300).optional(),
   targetDate: date.optional(),
   eventLabel: z.string().trim().max(50).optional(),
 });

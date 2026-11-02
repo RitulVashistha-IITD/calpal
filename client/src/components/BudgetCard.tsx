@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
-import type { FormEvent, ReactNode } from "react";
+import type { ReactNode } from "react";
+import { Link } from "react-router-dom";
 import { api, ApiError } from "../api/client";
 import { today } from "../api/types";
 import type { Goal, Stats } from "../api/types";
 import { MyCoach, coachLine, useCoach } from "./Coach";
-import { Button, ErrorBanner, Input } from "./ui";
+import { ErrorBanner } from "./ui";
 
 function daysUntil(date: string) {
   const ms = new Date(date + "T00:00:00").getTime() - new Date(today() + "T00:00:00").getTime();
@@ -35,71 +36,11 @@ function Ring({ pct, over, children }: { pct: number; over: boolean; children: R
   );
 }
 
-function GoalForm({ initial, onSaved }: { initial: Goal | null; onSaved: () => void }) {
-  const [type, setType] = useState<Goal["type"]>(initial?.type ?? "maintain");
-  const [budget, setBudget] = useState(String(initial?.dailyCalorieBudget ?? 2000));
-  const [targetDate, setTargetDate] = useState(initial?.targetDate ?? "");
-  const [label, setLabel] = useState(initial?.eventLabel ?? "");
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
-
-  const submit = async (e: FormEvent) => {
-    e.preventDefault();
-    const n = Number(budget);
-    if (!Number.isInteger(n) || n < 800 || n > 10000) return setError("Budget must be a whole number from 800 to 10000");
-    setLoading(true);
-    setError("");
-    try {
-      await api("/goal", {
-        method: "PUT",
-        body: {
-          type,
-          dailyCalorieBudget: n,
-          ...(targetDate && { targetDate }),
-          ...(label.trim() && { eventLabel: label.trim() }),
-        },
-      });
-      onSaved();
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Could not save goal");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <form onSubmit={submit} className="mt-5 max-w-lg space-y-4">
-      {error && <ErrorBanner message={error} />}
-      <div className="grid grid-cols-3 gap-1 rounded-xl bg-mist-100 p-1">
-        {(["lose", "maintain", "gain"] as const).map((t) => (
-          <button
-            type="button"
-            key={t}
-            onClick={() => setType(t)}
-            className={`rounded-lg py-2 text-sm font-semibold capitalize transition ${
-              type === t ? "bg-white text-blush-600 shadow-sm" : "text-mist-500 hover:text-mist-700"
-            }`}
-          >
-            {t}
-          </button>
-        ))}
-      </div>
-      <Input label="Daily calorie budget" type="number" value={budget} onChange={(e) => setBudget(e.target.value)} />
-      <div className="grid grid-cols-2 gap-3">
-        <Input label="Event name (optional)" value={label} onChange={(e) => setLabel(e.target.value)} placeholder="Goa trip" />
-        <Input label="Event date (optional)" type="date" value={targetDate} onChange={(e) => setTargetDate(e.target.value)} />
-      </div>
-      <Button type="submit" loading={loading}>Save goal</Button>
-    </form>
-  );
-}
-
 export default function BudgetCard({ refreshKey, date }: { refreshKey: number; date: string }) {
   const { prefs } = useCoach();
   const [goal, setGoal] = useState<Goal | null>(null);
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
-  const [editing, setEditing] = useState(false);
   const [error, setError] = useState("");
 
   const load = useCallback(async () => {
@@ -127,12 +68,14 @@ export default function BudgetCard({ refreshKey, date }: { refreshKey: number; d
   if (loading) return <section className={`${plain} text-center text-sm font-semibold text-mist-500`}>Loading your day…</section>;
   if (error) return <section className={plain}><ErrorBanner message={error} /></section>;
 
-  if (!goal || editing) {
+  if (!goal) {
     return (
-      <section className={plain}>
-        <h2 className="font-display text-2xl font-extrabold tracking-tight">{goal ? "Edit your goal" : "Set your daily goal"}</h2>
-        <p className="mt-1 text-sm text-mist-500">Your budget drives everything on this page.</p>
-        <GoalForm initial={goal} onSaved={() => { setEditing(false); load(); }} />
+      <section className={`${plain} pattern-sparkles`}>
+        <h2 className="font-display text-2xl font-extrabold tracking-tight">Set your daily goal</h2>
+        <p className="mt-1 max-w-md text-sm text-mist-500">Pick a target and a date, and I'll suggest a daily budget that fits your body and your timeline.</p>
+        <Link to="/plan" className="mt-5 inline-block rounded-xl bg-blush-500 px-5 py-2.5 text-sm font-bold text-white hover:bg-blush-600">
+          Set up my plan
+        </Link>
       </section>
     );
   }
@@ -173,9 +116,9 @@ export default function BudgetCard({ refreshKey, date }: { refreshKey: number; d
                 <span className="ml-1.5 text-lg font-semibold text-blush-100">kcal</span>
               </p>
             </div>
-            <button onClick={() => setEditing(true)} className="rounded-lg px-2 py-1 text-sm font-semibold text-blush-100 hover:bg-white/10">
+            <Link to="/plan" className="rounded-lg px-2 py-1 text-sm font-semibold text-blush-100 hover:bg-white/10">
               Edit goal
-            </button>
+            </Link>
           </div>
 
           <div className="mt-5 grid grid-cols-3 divide-x divide-white/20 border-t border-white/20 pt-4 text-center">

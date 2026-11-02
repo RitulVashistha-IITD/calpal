@@ -11,6 +11,7 @@ import { requireAuth } from "./middleware/auth";
 import { errorHandler, AppError } from "./middleware/errorHandler";
 import { authLimiter, apiLimiter } from "./middleware/rateLimit";
 import { profileRouter } from "./routes/profile";
+import { accountRouter } from "./routes/account";
 
 export const app = express();
 
@@ -28,6 +29,7 @@ app.get("/api/me", requireAuth, (req, res) => {
 });
 
 app.use("/api/auth", authLimiter, authRouter);
+app.use("/api/account", authLimiter, accountRouter);
 app.use("/api/entries", entriesRouter);
 app.use("/api/goal", goalRouter);
 app.use("/api/stats", statsRouter);

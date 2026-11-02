@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { api, ApiError } from "../api/client";
-import { today } from "../api/types";
 import type { EntryType } from "../api/types";
 import { Button, ErrorBanner, Input } from "./ui";
 
@@ -25,12 +24,23 @@ export default function EntryForm({ onCreated, day }: { onCreated: () => void; d
 
   const [estimate, setEstimate] = useState<Estimate | null>(null);
   const [looking, setLooking] = useState(false);
+  const [lookupNote, setLookupNote] = useState("");
   const calTouched = useRef(false); // true once the user types their own number
+  const cacheRef = useRef(new Map<string, Estimate>()); // repeated names cost nothing
 
   useEffect(() => {
     const q = name.trim();
     setEstimate(null);
+    setLookupNote("");
     if (q.length < 3) {
+      setLooking(false);
+      return;
+    }
+    const key = `${type}:${q.toLowerCase()}`;
+    const hit = cacheRef.current.get(key);
+    if (hit) {
+      setEstimate(hit);
+      if (!calTouched.current) setCalories(String(hit.calories));
       setLooking(false);
       return;
     }
@@ -40,14 +50,15 @@ export default function EntryForm({ onCreated, day }: { onCreated: () => void; d
       try {
         const r = await api<Estimate>(`/calories?${new URLSearchParams({ q, type })}`);
         if (cancelled) return;
+        cacheRef.current.set(key, r);
         setEstimate(r);
         if (!calTouched.current) setCalories(String(r.calories));
-      } catch {
-        /* silent on purpose: the user can always type the calories */
+      } catch (e) {
+        if (!cancelled) setLookupNote(e instanceof ApiError ? e.message : "Couldn't estimate this one. You can type the calories yourself.");
       } finally {
         if (!cancelled) setLooking(false);
       }
-    }, 600);
+    }, 900);
     return () => {
       cancelled = true;
       clearTimeout(timer);
@@ -70,6 +81,7 @@ export default function EntryForm({ onCreated, day }: { onCreated: () => void; d
       setName("");
       setCalories("");
       setEstimate(null);
+      setLookupNote("");
       calTouched.current = false;
       onCreated();
     } catch (err) {
@@ -98,7 +110,16 @@ export default function EntryForm({ onCreated, day }: { onCreated: () => void; d
         ))}
       </div>
 
-      <Input label="What was it?" value={name} onChange={(e) => setName(e.target.value)} error={errors.name} placeholder="Dal rice, gulab jamun, a run…" />
+      <Input
+        label="What was it?"
+        value={name}
+        onChange={(e) => {
+          if (e.target.value.trim() === "") calTouched.current = false; // a fresh name gets a fresh estimate
+          setName(e.target.value);
+        }}
+        error={errors.name}
+        placeholder="Dal rice, gulab jamun, a run…"
+      />
 
       <div className="grid grid-cols-2 gap-3">
         <Input
@@ -117,6 +138,7 @@ export default function EntryForm({ onCreated, day }: { onCreated: () => void; d
       <p className="min-h-4 text-xs font-medium text-mist-500">
         {looking && "Looking up a typical value…"}
         {!looking && estimate && `Estimated at about ${estimate.calories} kcal for ${estimate.serving}. It's a guess, so edit it if yours differs.`}
+        {!looking && !estimate && lookupNote && `${lookupNote}`}
       </p>
 
       <Button type="submit" loading={loading} className="w-full">Add entry</Button>
